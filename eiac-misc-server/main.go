@@ -153,7 +153,7 @@ func main() {
 	http.Handle("/css/", http.FileServer(http.Dir("static")))
 	http.Handle("/js/", http.FileServer(http.Dir("static")))
 	http.Handle("/img/", http.FileServer(http.Dir("static")))
-	http.Handle("/1123/", http.FileServer(http.Dir("dl")))
+	http.Handle("/dl/", http.FileServer(http.Dir("public")))
 
 	http.HandleFunc("/pdf", convertToPDF)
 	http.HandleFunc("/upload", upload)

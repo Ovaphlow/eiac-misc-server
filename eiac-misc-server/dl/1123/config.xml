@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Server>
-    <ws_ip>localhost</ws_ip>
-    <ws_port>8081</ws_port>
-    <ws_outdir>d:\73mp\eiac-tools\dl</ws_outdir>
-    <fs_ip>localhost</fs_ip>
-    <fs_port>8082</fs_port>
-    <fs_root>./dl</fs_root>
-</Server>
