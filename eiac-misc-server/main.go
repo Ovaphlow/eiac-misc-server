@@ -2,9 +2,11 @@ package main
 
 import (
 	"crypto/md5"
+	"encoding/xml"
 	"fmt"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -14,98 +16,76 @@ import (
 	"time"
 )
 
-type TraceHandler struct {
-	h http.Handler
+type Config struct {
+	XMLName   xml.Name `xml:"Server"`
+	WS_IP     string   `xml:"ws_ip"`
+	WS_PORT   string   `xml:"ws_port"`
+	WS_OUTDIR string   `xml:"ws_outdir"`
+	FS_IP     string   `xml:"fs_ip"`
+	FS_PORT   string   `xml:"fs_port"`
+	FS_ROOT   string   `xml:"fs_root"`
 }
-
-type Person struct {
-	UserName string
-	Gender   string
-	FileName string
-	DestDir  string
-}
-
 type File struct {
-	FileName string
+	Token string
+	Name  string
+	Type  string
 }
+
+var fs_ip, fs_port, out_dir string
 
 func getFileName(fileName string) string {
-	path := strings.Split(fileName, "\\")
+	path := strings.Split(fileName, "/")
 	index := len(path)
 	names := strings.Split(path[index-1], ".")
 	return names[0]
 }
 
-func (r TraceHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	println("get", req.URL.Path, " from ", req.RemoteAddr)
-	r.h.ServeHTTP(w, req)
-}
-
-func testPage(w http.ResponseWriter, r *http.Request) {
-	t, _ := template.ParseFiles("download.html")
-	p := Person{UserName: "Ovaphlow", FileName: "cost.pdf"}
-	t.Execute(w, p)
-}
-
-func oldTestPage(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()       //解析参数，默认不解析的
-	fmt.Println(r.Form) //这些信息是输出到服务器端的打印信息
-	fmt.Println("path", r.URL.Path)
-	fmt.Println("scheme", r.URL.Scheme)
-	fmt.Println(r.Form["url_long"])
-	for k, v := range r.Form {
-		fmt.Println("key:", k)
-		fmt.Println("val:", strings.Join(v, ""))
-	}
-	fmt.Fprintf(w, "Hello 用户!") //这个写入到w的是输出到客户端的
-}
-
-func logonPage(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("method:", r.Method) //获取请求的方法
-	r.ParseForm()
-	if r.Method == "GET" {
-		t, _ := template.ParseFiles("login/login.html")
-		t.Execute(w, nil)
-	} else {
-		//请求的是登陆数据，那么执行登陆的逻辑判断
-		fmt.Println("username:", r.Form["username"])
-		fmt.Println("password:", r.Form["password"])
-	}
-}
-
-func indexPage(w http.ResponseWriter, r *http.Request) {
-
+func getFileExt(fileName string) string {
+	name := strings.Split(fileName, ".")
+	index := len(name)
+	return name[index-1]
 }
 
 func convertToPDF(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("method:", r.Method)
 	r.ParseForm()
 	if r.Method == "GET" {
-		fmt.Println("fileName:", r.Form["file"])
-		fmt.Println("destDir:", r.Form["dir"])
-		var fileName []string = r.Form["file"]
-		var destDir []string = r.Form["dir"]
-		cmd := exec.Command("soffice.exe", "--headless", "-convert-to", "pdf", fileName[0], "-outdir", destDir[0])
-		//cmd := exec.Command("soffice.exe", "--headless", "-convert-to", "pdf", fileName[0], "-outdir", "d:\\ftp_root\\")
+		//fmt.Println("file name:", r.Form["file"])
+		//fmt.Println("dest dir:", r.Form["dir"])
+		file := r.Form["file"]
+		//dest_dir := r.Form["dir"]
+		file_name := strings.Replace(file[0], `/`, `\`, -1)
+		fmt.Printf("file name:%s\n", file_name)
+		fmt.Printf("out dir:%s\n", out_dir)
+		cmd := exec.Command("soffice.exe", "--headless", "-convert-to", "pdf", file_name, "-outdir", out_dir)
+		//cmd := exec.Command("soffice.exe", "--headless", "-convert-to", "pdf", file[0], "-outdir", dest_dir[0])
 		buf, err := cmd.Output()
 		fmt.Printf("%s\n%s", buf, err)
 		//fmt.Fprintf(w, "下载文件准备完毕，请关闭窗口")
-		name := getFileName(fileName[0])
-		//http.Redirect(w, r, "ftp://1123:1123@172.19.8.242/"+name+".pdf", http.StatusFound)
-		fmt.Fprintf(w, "<a href=ftp://1123:1123@127.0.0.1/"+name+".pdf>合同文件下载链接</a>")
+		name := getFileName(file[0])
+		fmt.Println(name)
+		fmt.Fprintf(w, "<a href=http://"+fs_ip+":"+fs_port+"/"+name+".pdf>合同文件下载链接</a>（不能正常下载的时候可以鼠标右键选择[目标另存为]）")
 	}
 }
 
-func uploadPage(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("method:", r.Method) //获取请求的方法
+func upload(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("method:", r.Method)
+	r.ParseForm()
 	if r.Method == "GET" {
 		crutime := time.Now().Unix()
 		h := md5.New()
 		io.WriteString(h, strconv.FormatInt(crutime, 10))
-		token := fmt.Sprintf("%x", h.Sum(nil))
+
+		fname := r.Form["fname"]
+		ftype := r.Form["ftype"]
+		s := fmt.Sprintf("%x", h.Sum(nil))
+		fmt.Println(s)
+		fmt.Println(fname)
+		fmt.Println(ftype)
+		file := File{Token: s, Name: fname[0], Type: ftype[0]}
 
 		t, _ := template.ParseFiles("upload.html")
-		t.Execute(w, token)
+		t.Execute(w, file)
 	} else {
 		r.ParseMultipartForm(32 << 20)
 		file, handler, err := r.FormFile("uploadfile")
@@ -114,27 +94,65 @@ func uploadPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer file.Close()
-		fmt.Fprintf(w, "%v", handler.Header)
-		f, err := os.OpenFile("./test/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+		//fmt.Fprintf(w, "%v", handler.Header)
+		file_name := r.Form["fname"][0]
+		file_type := r.Form["ftype"]
+
+		var file_dir string
+
+		switch {
+		case file_type[0] == "report":
+			file_dir = "report"
+		case file_type[0] == "eupic1":
+			file_dir = "eu_pic"
+			file_name = file_name + "_lic"
+		case file_type[0] == "eupic2":
+			file_dir = "eu_pic"
+			file_name = file_name + "_sign"
+		}
+
+		f, err := os.OpenFile("./dl/"+file_dir+"/"+file_name+"."+getFileExt(handler.Filename), os.O_WRONLY|os.O_CREATE, 0666)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 		defer f.Close()
 		io.Copy(f, file)
+		fmt.Fprintf(w, "上传完毕，请关闭窗口。")
 	}
 }
 
 func main() {
-	fmt.Println("服务器正在运行，端口为8081，请不要关闭程序。")
-	fmt.Println("转换PDF文档的路径为/converttopdf")
-	//http.HandleFunc("/", testPage)
-	http.HandleFunc("/test", testPage)
-	http.HandleFunc("/logon", logonPage)
-	http.HandleFunc("/index", indexPage)
-	http.HandleFunc("/upload", uploadPage)
-	http.HandleFunc("/converttopdf", convertToPDF)
-	err := http.ListenAndServe(":8081", nil) //设置监听的端口
+	file, err := os.Open("config.xml")
+	defer file.Close()
+	if err != nil {
+		fmt.Printf("error: %v", err)
+		return
+	}
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		fmt.Printf("error: %v", err)
+		return
+	}
+	v := Config{}
+	err = xml.Unmarshal(data, &v)
+	if err != nil {
+		fmt.Printf("error: %v", err)
+		return
+	}
+
+	fmt.Printf("ws-ip:%q\n", v.WS_IP)
+	fmt.Printf("ws_port:%q\n", v.WS_PORT)
+	fmt.Printf("ws_outdir:%q\n", v.WS_OUTDIR)
+	fmt.Printf("fs-ip:%q\n", v.FS_IP)
+	fmt.Printf("fs_port:%q\n", v.FS_PORT)
+	fmt.Printf("fs_root:%q\n", v.FS_ROOT)
+
+	fs_ip, fs_port, out_dir = v.FS_IP, v.FS_PORT, v.WS_OUTDIR
+
+	http.HandleFunc("/pdf", convertToPDF)
+	http.HandleFunc("/upload", upload)
+	err = http.ListenAndServe(":"+v.WS_PORT, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
