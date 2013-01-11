@@ -150,9 +150,9 @@ func main() {
 
 	fs_ip, fs_port, out_dir = v.FS_IP, v.FS_PORT, v.WS_OUTDIR
 
-	http.Handle("/css/", http.FileServer(http.Dir("static")))
-	http.Handle("/js/", http.FileServer(http.Dir("static")))
-	http.Handle("/img/", http.FileServer(http.Dir("static")))
+	http.Handle("/static/", http.FileServer(http.Dir("public")))
+	//ttp.Handle("/js/", http.FileServer(http.Dir("static")))
+	//http.Handle("/img/", http.FileServer(http.Dir("static")))
 	http.Handle("/dl/", http.FileServer(http.Dir("public")))
 
 	http.HandleFunc("/pdf", convertToPDF)
