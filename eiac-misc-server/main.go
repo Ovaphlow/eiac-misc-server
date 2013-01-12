@@ -21,6 +21,7 @@ type Config struct {
 	SERVER_IP   string   `xml:"server_ip"`
 	LISTEN_PORT string   `xml:"listen_port"`
 }
+
 type File struct {
 	Token string
 	Name  string
