@@ -134,8 +134,8 @@ func main() {
 		return
 	}
 
-	fmt.Printf("server_ip:%q\n", v.SERVER_IP)
-	fmt.Printf("listen_port:%q\n", v.LISTEN_PORT)
+	fmt.Printf("server ip:%q\n", v.SERVER_IP)
+	fmt.Printf("listen port:%q\n", v.LISTEN_PORT)
 	server_ip, listen_port, out_dir = v.SERVER_IP, v.LISTEN_PORT, `public\dl\`
 
 	http.Handle("/static/", http.FileServer(http.Dir("public")))
