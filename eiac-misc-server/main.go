@@ -31,7 +31,7 @@ type File struct {
 var server_ip, listen_port, out_dir string
 
 func getFileName(fileName string) string {
-	path := strings.Split(fileName, `\`)
+	path := strings.Split(fileName, `/`)
 	index := len(path)
 	names := strings.Split(path[index-1], ".")
 	return names[0]
@@ -66,9 +66,9 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("method:", r.Method)
 	r.ParseForm()
 	if r.Method == "GET" {
-		crutime := time.Now().Unix()
+		curtime := time.Now().Unix()
 		h := md5.New()
-		io.WriteString(h, strconv.FormatInt(crutime, 10))
+		io.WriteString(h, strconv.FormatInt(curtime, 10))
 
 		fname := r.Form["fname"]
 		ftype := r.Form["ftype"]
