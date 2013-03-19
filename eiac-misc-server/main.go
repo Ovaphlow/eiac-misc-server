@@ -1,4 +1,4 @@
-package main
+package eiac_misc_server
 
 import (
 	"crypto/md5"
@@ -51,6 +51,7 @@ func xls2pdf(w http.ResponseWriter, r *http.Request) {
 		file_name := strings.Replace(file[0], `/`, `\`, -1)
 		fmt.Printf("file name:%s\n", file_name)
 		fmt.Printf("out dir:%s\n", out_dir)
+		//将libreoffice目录写到xml配置文件里
 		cmd := exec.Command(`C:\Program Files (x86)\LibreOffice 3.6\program\soffice.exe`, "--headless", "-convert-to", "pdf", "--outdir", out_dir+"pdf", file_name)
 		//cmd := exec.Command(`C:\Program Files (x86)\LibreOffice 3.6\program\soffice.exe`, "--headless", "-convert-to", "pdf", file_name, "--outdir", `d:\work`)
 		buf, err := cmd.Output()
@@ -66,6 +67,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("method:", r.Method)
 	r.ParseForm()
 	if r.Method == "GET" {
+		TestGo("wert")
 		curtime := time.Now().Unix()
 		h := md5.New()
 		io.WriteString(h, strconv.FormatInt(curtime, 10))
